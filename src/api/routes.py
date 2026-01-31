@@ -20,3 +20,12 @@ def handle_hello():
     }
 
     return jsonify(response_body), 200
+
+@api.route('/signup', methods=['POST'])
+def signup():
+    body = request.json
+    email = body.get("email")
+    password = body.get("password")
+
+    if not email or not password:
+        raise APIException("Missing email or password",status_code=400)
