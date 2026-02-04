@@ -7,10 +7,9 @@ from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
 import jwt
 from datetime import timedelta, datetime
-from api.models import db, User
-from api.utils import APIException
 from functools import wraps
-from api.routes import api
+from werkzeug.security import generate_password_hash, check_password_hash
+
 
 SECRET_KEY = "super-secret-key"
 
@@ -42,7 +41,7 @@ def signup():
     if user_exists:
         raise APIException("User already exists", status_code=409)
     
-    new_user = User(email=email, password=password)
+    new_user = User(email=email, password=generate_password_hash(password), is_active=True)
     db.session.add(new_user)
     db.session.commit()
 
@@ -54,9 +53,9 @@ def login():
     email = body.get("email")
     password = body.get("password")
 
-    user = User.query.filter_by(email=email, password=password).first()
+    user = User.query.filter_by(email=email).first()
 
-    if not user:
+    if not user or not check_password_hash(user.password,password):
         raise APIException("Bad credentials", status_code=401)
     
     token = jwt.encode({
