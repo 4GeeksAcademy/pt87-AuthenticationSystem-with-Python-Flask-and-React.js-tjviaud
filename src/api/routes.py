@@ -9,6 +9,7 @@ import jwt
 from datetime import timedelta, datetime
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
 
 SECRET_KEY = "super-secret-key"
@@ -58,32 +59,15 @@ def login():
     if not user or not check_password_hash(user.password,password):
         raise APIException("Bad credentials", status_code=401)
     
-    token = jwt.encode({
-        "id": user.id,
-        "exp": datetime.utcnow() + timedelta(hours=1)
-    }, SECRET_KEY, algorithm="HS256")
+    token = create_access_token(identity=str(user.id))
 
     return jsonify({ "token": token }), 200
 
-def token_required(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        token = request.headers.get("Authorization")
-
-        if not token:
-            raise APIException("Missing token", status_code=401)
-        
-        try:
-            jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        except:
-            raise APIException("Invalid token", status_code=401)
-    
-        return f(*args, **kwargs)
-
-    return wrapper
 
 
-@api.route('/private', methods=['GET'])
-@token_required
-def private():
-    return jsonify({ "msg": "You are logged in" }), 200
+@api.route('/token', methods=['GET'])
+@jwt_required()
+def protected():
+    user_id=get_jwt_identity()
+    user=User.query.get(user_id)
+    return jsonify({"id":user.id, "email": user.email})
